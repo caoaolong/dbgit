@@ -1,0 +1,25 @@
+# Go
+backend/bin/
+backend/tmp/
+*.exe
+*.test
+*.out
+
+# 本地配置（保留 example）
+backend/configs/config.yaml
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.local
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
