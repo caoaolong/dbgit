@@ -16,7 +16,8 @@ frontend/.vite/
 
 # IDE / OS
 .idea/
-.vscode/
+.vscode/*
+!.vscode/launch.json
 *.swp
 .DS_Store
 Thumbs.db
