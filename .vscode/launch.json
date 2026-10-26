@@ -10,7 +10,7 @@
       "cwd": "${workspaceFolder}/backend",
       "args": ["-config", "configs/config.yaml"],
       "env": {},
-      "console": "integratedTerminal"
+      "console": "internalConsole"
     },
     {
       "name": "Frontend",

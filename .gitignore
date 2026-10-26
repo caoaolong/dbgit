@@ -8,6 +8,9 @@ backend/tmp/
 # 本地配置（保留 example）
 backend/configs/config.yaml
 
+# 本地数据（安装记录等，可删）
+backend/data/
+
 # Node / frontend
 frontend/node_modules/
 frontend/dist/
@@ -24,3 +27,5 @@ Thumbs.db
 
 # Logs
 *.log
+
+__debug_*

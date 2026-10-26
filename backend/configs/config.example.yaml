@@ -8,5 +8,13 @@ proxysql:
   admin_user: "admin"
   admin_password: "admin"
 
+database:
+  path: "data/dbgit.db" # SQLite 文件路径（相对后端工作目录）
+
+sqllog:
+  interval_seconds: 60 # eventslog 采集间隔（秒）
+  buffer_size: 200000 # ProxySQL eventslog 环形缓冲区大小（事件数）
+  retention_days: 30 # 变更记录保留天数
+
 log:
   level: info # debug | info | warn | error
