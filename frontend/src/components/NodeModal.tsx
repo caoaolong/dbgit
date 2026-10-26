@@ -14,23 +14,29 @@ type Props = {
   onSaved: () => void
 }
 
-export function NodeModal({ open, editing, onClose, onSaved }: Props) {
+type NodeFormPanelProps = {
+  /** 为空表示新增，不为空表示编辑 */
+  initial?: ProxyNode | null
+  onSaved: () => void
+  onCancel?: () => void
+}
+
+export function NodeFormPanel({ initial, onSaved, onCancel }: NodeFormPanelProps) {
   const [form] = Form.useForm<NodeFormValues>()
 
   useEffect(() => {
-    if (!open) return
     form.resetFields()
-    if (editing) {
+    if (initial) {
       form.setFieldsValue({
-        name: editing.name,
-        host: editing.host,
-        admin_port: editing.admin_port,
-        mysql_port: editing.mysql_port,
-        admin_user: editing.admin_user,
+        name: initial.name,
+        host: initial.host,
+        admin_port: initial.admin_port,
+        mysql_port: initial.mysql_port,
+        admin_user: initial.admin_user,
         admin_password: '',
-        container_name: editing.container_name ?? '',
-        docker_host: editing.docker_host ?? '',
-        remark: editing.remark ?? '',
+        container_name: initial.container_name ?? '',
+        docker_host: initial.docker_host ?? '',
+        remark: initial.remark ?? '',
       })
     } else {
       form.setFieldsValue({
@@ -40,32 +46,32 @@ export function NodeModal({ open, editing, onClose, onSaved }: Props) {
         admin_user: 'admin',
       })
     }
-  }, [open, editing, form])
+  }, [initial, form])
 
   async function onFinish(values: NodeFormValues) {
     try {
-      if (editing) {
-        await updateProxyNode(editing.id, values)
+      if (initial) {
+        await updateProxyNode(initial.id, values)
         message.success('代理节点已更新')
       } else {
         await createProxyNode(values)
         message.success('代理节点已添加')
+        form.resetFields()
+        form.setFieldsValue({
+          host: '127.0.0.1',
+          admin_port: 6032,
+          mysql_port: 6033,
+          admin_user: 'admin',
+        })
       }
       onSaved()
-      onClose()
     } catch (err) {
       message.error(err instanceof Error ? err.message : '保存失败')
     }
   }
 
   return (
-    <Modal
-      title={editing ? `编辑代理 · ${editing.name}` : '添加远程代理'}
-      open={open}
-      onCancel={onClose}
-      footer={null}
-      width={560}
-    >
+    <>
       <Form<NodeFormValues>
         form={form}
         layout="horizontal"
@@ -100,9 +106,9 @@ export function NodeModal({ open, editing, onClose, onSaved }: Props) {
         <Form.Item
           label="Admin 密码"
           name="admin_password"
-          tooltip={editing ? '留空表示保持原密码不变' : undefined}
+          tooltip={initial ? '留空表示保持原密码不变' : undefined}
         >
-          <Input.Password visibilityToggle placeholder={editing ? '留空则不修改' : 'admin'} />
+          <Input.Password visibilityToggle placeholder={initial ? '留空则不修改' : 'admin'} />
         </Form.Item>
         <Form.Item
           label="容器名"
@@ -124,12 +130,35 @@ export function NodeModal({ open, editing, onClose, onSaved }: Props) {
           <Input.TextArea rows={2} />
         </Form.Item>
         <div className="form-footer">
-          <Button onClick={onClose}>取消</Button>
+          {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
           <Button type="primary" htmlType="submit">
             保存并验证连通
           </Button>
         </div>
       </Form>
+    </>
+  )
+}
+
+export function NodeModal({ open, editing, onClose, onSaved }: Props) {
+  return (
+    <Modal
+      title={editing ? `编辑代理 · ${editing.name}` : '添加远程代理'}
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={560}
+    >
+      {open ? (
+        <NodeFormPanel
+          initial={editing ?? null}
+          onCancel={onClose}
+          onSaved={() => {
+            onSaved()
+            onClose()
+          }}
+        />
+      ) : null}
     </Modal>
   )
 }

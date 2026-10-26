@@ -112,7 +112,7 @@ export function ProjectsPage() {
                     <Text strong ellipsis title={p.name} className="project-card-name">
                       {p.name}
                     </Text>
-                    <Text type="secondary">{p.envs.length} 个环境</Text>
+                    <Text type="secondary">{p.envs.length} 个分支</Text>
                   </div>
                 </div>
                 <div className="project-card-actions project-card-actions-left">
@@ -124,7 +124,7 @@ export function ProjectsPage() {
                       goDetail(p.id)
                     }}
                   >
-                    环境管理 &gt;
+                    分支管理 &gt;
                   </Button>
                 </div>
               </Card>

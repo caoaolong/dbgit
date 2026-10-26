@@ -21,7 +21,7 @@ type FormValues = {
   mysql_port: number
 }
 
-export function InstallModal({ open, onClose, onInstalled }: Props) {
+export function InstallPanel({ onInstalled }: { onInstalled: () => void }) {
   const [form] = Form.useForm<FormValues>()
   const [method, setMethod] = useState<InstallMethod>('docker')
   const [submitting, setSubmitting] = useState(false)
@@ -80,13 +80,7 @@ export function InstallModal({ open, onClose, onInstalled }: Props) {
   const done = jobState === 'success'
 
   return (
-    <Modal
-      title="安装 ProxySQL"
-      open={open}
-      onCancel={onClose}
-      footer={null}
-      width={560}
-    >
+    <>
       <Form<FormValues>
         form={form}
         layout="horizontal"
@@ -147,6 +141,20 @@ export function InstallModal({ open, onClose, onInstalled }: Props) {
         />
       )}
       {jobLog && <pre className="log">{jobLog}</pre>}
+    </>
+  )
+}
+
+export function InstallModal({ open, onClose, onInstalled }: Props) {
+  return (
+    <Modal
+      title="安装 ProxySQL"
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={560}
+    >
+      {open ? <InstallPanel onInstalled={onInstalled} /> : null}
     </Modal>
   )
 }

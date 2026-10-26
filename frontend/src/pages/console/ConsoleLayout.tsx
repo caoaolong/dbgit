@@ -7,6 +7,7 @@ import {
   HddOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  RocketOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -20,6 +21,7 @@ const MENU_ITEMS = [
   { key: '/app/proxysql', icon: <DatabaseOutlined />, label: '代理管理' },
   { key: '/app/instances', icon: <HddOutlined />, label: '实例管理' },
   { key: '/app/projects', icon: <ApartmentOutlined />, label: '项目管理' },
+  { key: '/app/quickstart', icon: <RocketOutlined />, label: '快速使用' },
   { key: '/app/settings', icon: <SettingOutlined />, label: '设置' },
 ]
 

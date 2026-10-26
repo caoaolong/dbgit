@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
+  Alert,
   Button,
   Card,
+  Checkbox,
   Col,
   Empty,
   Form,
@@ -25,6 +27,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
+  cloneEnv,
   createBinding,
   createEnv,
   deleteBinding,
@@ -35,6 +38,7 @@ import {
   updateBinding,
   updateEnv,
   updateProject,
+  type CloneTargetInput,
   type EnvNode,
   type ProjectNode,
 } from '../../api/projects'
@@ -60,6 +64,9 @@ type FormValues = {
   remark: string
   instance_id: number
   db_name: string
+  source_env_id?: number
+  comment?: string
+  targets?: CloneTargetInput[]
 }
 
 export function ProjectDetailPage() {
@@ -150,15 +157,60 @@ export function ProjectDetailPage() {
     if (!modal) return
     setSaving(true)
     try {
+      // 各分支内已分别提示成功，避免底部重复提示
+      let toasted = false
+      const toastOk = (msg: string) => {
+        if (!toasted) {
+          toasted = true
+          message.success(msg)
+        }
+      }
       if (modal.kind === 'project') {
         await updateProject(modal.editing.id, {
           name: values.name,
           remark: values.remark ?? '',
         })
+        toastOk('保存成功')
       } else if (modal.kind === 'env') {
-        const payload = { name: values.name, remark: values.remark ?? '' }
-        if (modal.editing) await updateEnv(modal.editing.id, payload)
-        else await createEnv(modal.projectId, payload)
+        if (modal.editing) {
+          await updateEnv(modal.editing.id, {
+            name: values.name,
+            remark: values.remark ?? '',
+          })
+          toastOk('保存成功')
+        } else if (values.source_env_id) {
+          const srcName =
+            project?.envs.find((e) => e.id === Number(values.source_env_id))?.name ?? ''
+          const targets = (values.targets ?? []).map((t) => ({
+            source_binding_id: Number(t.source_binding_id),
+            instance_id: Number(t.instance_id),
+            db_name: (t.db_name ?? '').trim(),
+            overwrite: !!t.overwrite,
+            create_if_missing: !!t.create_if_missing,
+          }))
+          // 来源分支无库时 targets 为空，等价于普通创建
+          if (targets.length === 0) {
+            await createEnv(modal.projectId, { name: values.name, remark: values.remark ?? '' })
+            toastOk('保存成功')
+          } else {
+            const r = await cloneEnv(Number(values.source_env_id), {
+              name: values.name,
+              remark: values.remark ?? '',
+              comment: values.comment?.trim() || undefined,
+              targets,
+            })
+            const bits: string[] = []
+            if (r.ddl?.dropped?.length) bits.push(`覆盖 ${r.ddl.dropped.length} 个`)
+            if (r.ddl?.created?.length) bits.push(`新建 ${r.ddl.created.length} 个`)
+            toastOk(
+              `分支已创建，已从${srcName}克隆 ${r.env.dbs.length} 个库${bits.length ? `（${bits.join('，')}）` : ''}`,
+            )
+          }
+        } else {
+          const payload = { name: values.name, remark: values.remark ?? '' }
+          await createEnv(modal.projectId, payload)
+          toastOk('保存成功')
+        }
       } else {
         const payload = {
           instance_id: Number(values.instance_id),
@@ -167,8 +219,8 @@ export function ProjectDetailPage() {
         }
         if (modal.editing) await updateBinding(modal.editing.id, payload)
         else await createBinding(modal.envId, payload)
+        toastOk('保存成功')
       }
-      message.success('保存成功')
       setModal(null)
       load()
     } catch (err) {
@@ -176,6 +228,31 @@ export function ProjectDetailPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // 新建分支时的候选来源分支（不含正在创建的自身）：有候选项时必须选择其一进行克隆
+  const otherEnvs =
+    modal?.kind === 'env' && !modal.editing ? (project?.envs ?? []) : []
+
+  // 当前选中的来源分支：逐库指定克隆目标
+  const watchedSourceId = Form.useWatch('source_env_id', form)
+  const sourceEnv =
+    modal?.kind === 'env' && !modal.editing && watchedSourceId
+      ? (project?.envs.find((e) => e.id === Number(watchedSourceId)) ?? null)
+      : null
+
+  // 选中来源分支后，按来源库逐行预填目标（连接/库名沿用来源，双勾选项默认勾选）
+  function applySourceDefaults(envId: number) {
+    const src = project?.envs.find((e) => e.id === envId)
+    form.setFieldsValue({
+      targets: (src?.dbs ?? []).map((b) => ({
+        source_binding_id: b.id,
+        instance_id: b.instance_id,
+        db_name: b.db_name,
+        overwrite: true,
+        create_if_missing: true,
+      })),
+    })
   }
 
   async function runDeleteProject(pid: number) {
@@ -214,8 +291,8 @@ export function ProjectDetailPage() {
       ? `编辑项目 · ${modal.editing.name}`
       : modal.kind === 'env'
         ? modal.editing
-          ? `编辑环境 · ${modal.editing.name}`
-          : '新增环境'
+          ? `编辑分支 · ${modal.editing.name}`
+          : '新增分支'
         : modal.editing
           ? `编辑绑定 · ${modal.editing.db_name}`
           : '绑定数据库'
@@ -238,7 +315,7 @@ export function ProjectDetailPage() {
         {modal?.kind !== 'binding' ? (
           <>
             <Form.Item
-              label={modal?.kind === 'env' ? '环境名称' : '项目名称'}
+              label={modal?.kind === 'env' ? '分支名称' : '项目名称'}
               name="name"
               rules={[{ required: true, message: '请输入名称' }]}
             >
@@ -248,6 +325,92 @@ export function ProjectDetailPage() {
                 }
               />
             </Form.Item>
+            {modal?.kind === 'env' && !modal.editing && otherEnvs.length > 0 ? (
+              <Form.Item
+                label="来源分支"
+                name="source_env_id"
+                rules={[{ required: true, message: '新建分支必须选择一个来源分支进行克隆' }]}
+                tooltip="将完整克隆所选分支的全部数据库，作为新分支的共同基线"
+              >
+                <Select
+                  showSearch
+                  placeholder="选择要克隆的来源分支"
+                  optionFilterProp="label"
+                  onChange={(v: number) => applySourceDefaults(Number(v))}
+                  options={otherEnvs.map((e) => ({
+                    value: e.id,
+                    label: `${e.name}（${e.dbs.length} 个库）`,
+                  }))}
+                />
+              </Form.Item>
+            ) : null}
+            {modal?.kind === 'env' && !modal.editing && sourceEnv && sourceEnv.dbs.length > 0 ? (
+              <>
+                {sourceEnv.dbs.map((b, idx) => (
+                  <Card
+                    key={b.id}
+                    size="small"
+                    type="inner"
+                    title={`源库：${b.db_name}${b.instance_name ? `（${b.instance_name}）` : ''}`}
+                    style={{ marginBottom: 12 }}
+                  >
+                    <Form.Item
+                      label="数据库连接"
+                      name={['targets', idx, 'instance_id']}
+                      rules={[{ required: true, message: '请选择目标连接' }]}
+                    >
+                      <Select
+                        placeholder="选择目标实例"
+                        options={instances.map((i) => ({
+                          value: i.id,
+                          label: `${i.name} · ${i.host}:${i.port}${i.version ? ` · ${i.version}` : ''}`,
+                        }))}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label="数据库名称"
+                      name={['targets', idx, 'db_name']}
+                      rules={[
+                        { required: true, message: '请输入目标库名' },
+                        { max: 64, message: '库名过长（最多 64 字符）' },
+                      ]}
+                    >
+                      <Input placeholder={b.db_name} />
+                    </Form.Item>
+                    <Form.Item
+                      name={['targets', idx, 'overwrite']}
+                      valuePropName="checked"
+                      style={{ marginBottom: 4 }}
+                    >
+                      <Checkbox>覆盖已存在的数据库（勾选后先 DROP 原库再克隆）</Checkbox>
+                    </Form.Item>
+                    <Form.Item
+                      name={['targets', idx, 'create_if_missing']}
+                      valuePropName="checked"
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Checkbox>不存在时新建（勾选后目标库不存在时自动创建）</Checkbox>
+                    </Form.Item>
+                  </Card>
+                ))}
+                <Form.Item label="克隆说明" name="comment">
+                  <Input.TextArea
+                    rows={2}
+                    maxLength={256}
+                    showCount
+                    placeholder="选填，如：以开发分支为基线"
+                  />
+                </Form.Item>
+              </>
+            ) : null}
+            {modal?.kind === 'env' && !modal.editing && otherEnvs.length === 0 ? (
+              <Alert
+                type="info"
+                showIcon={false}
+                message="暂无其他分支，将创建空分支"
+                style={{ marginBottom: 16 }}
+              />
+            ) : null}
             <Form.Item label="备注" name="remark">
               <Input.TextArea rows={2} />
             </Form.Item>
@@ -374,7 +537,7 @@ export function ProjectDetailPage() {
               icon={<PlusOutlined />}
               onClick={() => openModal({ kind: 'env', projectId: project.id })}
             >
-              新增环境
+              新增分支
             </Button>
             <Button
               type="link"
@@ -385,7 +548,7 @@ export function ProjectDetailPage() {
               编辑项目
             </Button>
             <Popconfirm
-              title={`确定删除项目 ${project.name}？其下环境与绑定将一并删除`}
+              title={`确定删除项目 ${project.name}？其下分支与绑定将一并删除`}
               onConfirm={() => runDeleteProject(project.id)}
             >
               <Button type="link" danger size="small" icon={<DeleteOutlined />}>
@@ -403,17 +566,17 @@ export function ProjectDetailPage() {
             </Text>
             <Space size={4}>
               <Tag color="blue">项目</Tag>
-              <Tag color="green">{project.envs.length} 个环境</Tag>
+              <Tag color="green">{project.envs.length} 个分支</Tag>
             </Space>
           </div>
         </div>
         <Text type="secondary">{project.remark || '暂无备注'}</Text>
       </Card>
 
-      {/* 环境卡片布局 */}
+      {/* 分支卡片布局 */}
       <Card
         size="small"
-        title={`环境列表（${project.envs.length}）`}
+        title={`分支列表（${project.envs.length}）`}
         extra={
           <Button
             type="link"
@@ -421,12 +584,12 @@ export function ProjectDetailPage() {
             icon={<PlusOutlined />}
             onClick={() => openModal({ kind: 'env', projectId: project.id })}
           >
-            新增环境
+            新增分支
           </Button>
         }
       >
         {project.envs.length === 0 ? (
-          <Empty description="暂无环境，点击右上角新增" />
+          <Empty description="暂无分支，点击右上角新增" />
         ) : (
           <Row gutter={[16, 16]}>
             {project.envs.map((e) => (
@@ -476,7 +639,7 @@ export function ProjectDetailPage() {
                         编辑
                       </Button>
                       <Popconfirm
-                        title={`确定删除环境 ${e.name}？其下绑定将一并删除`}
+                        title={`确定删除分支 ${e.name}？其下绑定将一并删除`}
                         onConfirm={() => runDeleteEnv(e.id)}
                       >
                         <Button type="link" danger size="small" icon={<DeleteOutlined />}>

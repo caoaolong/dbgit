@@ -258,7 +258,7 @@ func (h *Instances) Databases(c *gin.Context) {
 	response.OK(c, dbs)
 }
 
-// Delete DELETE /api/v1/instances/:id（被项目环境绑定时拒绝删除）
+// Delete DELETE /api/v1/instances/:id（被项目分支绑定时拒绝删除）
 func (h *Instances) Delete(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -270,7 +270,7 @@ func (h *Instances) Delete(c *gin.Context) {
 		return
 	}
 	if n > 0 {
-		response.Abort(c, http.StatusBadRequest, 400, "该连接已被项目环境绑定，请先解绑")
+		response.Abort(c, http.StatusBadRequest, 400, "该连接已被项目分支绑定，请先解绑")
 		return
 	}
 	deleted, err := h.db.DeleteInstance(id)

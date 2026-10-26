@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// SyncMerge 一次同步合并记录：把某绑定库的变更合并到目标环境。
+// SyncMerge 一次同步合并记录：把某绑定库的变更合并到目标分支。
 type SyncMerge struct {
 	ID              int64  `json:"id"`
 	ProjectID       int64  `json:"project_id"`
@@ -50,7 +50,7 @@ func (d *DB) migrateSyncMerges() error {
 	return err
 }
 
-// ListEnvDBs 列出某环境下的全部绑定（供合并目标解析用）。
+// ListEnvDBs 列出某分支下的全部绑定（供合并目标解析用）。
 func (d *DB) ListEnvDBs(envID int64) ([]EnvDB, error) {
 	return d.listEnvDBs(envID)
 }

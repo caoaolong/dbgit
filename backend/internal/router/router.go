@@ -66,6 +66,7 @@ func New(cfg *config.Config, db *store.DB, collector *sqllog.Collector) *gin.Eng
 		v1.PUT("/envs/:id", proj.UpdateEnv)
 		v1.DELETE("/envs/:id", proj.DeleteEnv)
 		v1.POST("/envs/:id/bindings", proj.CreateBinding)
+		v1.POST("/envs/:id/clone", proj.CloneEnv)
 		v1.PUT("/bindings/:id", proj.UpdateBinding)
 		v1.DELETE("/bindings/:id", proj.DeleteBinding)
 		v1.GET("/bindings/:id/changes", slog.BindingChanges)

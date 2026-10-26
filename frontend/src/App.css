@@ -538,3 +538,164 @@ body {
   border-left: 3px solid var(--brand);
   color: var(--muted);
 }
+
+.conn-md table {
+  width: 100%;
+  margin: 0.5rem 0 0.75rem;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.conn-md th,
+.conn-md td {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #28323f;
+  text-align: left;
+}
+
+.conn-md th {
+  background: rgba(61, 156, 240, 0.1);
+  font-weight: 600;
+}
+
+.conn-md td code {
+  white-space: nowrap;
+}
+
+/* ---------- 总览 Dashboard ---------- */
+.dash-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dash-stat {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.dash-stat:hover {
+  transform: translateY(-2px);
+}
+
+.dash-stat > .ant-card-body {
+  padding: 16px;
+}
+
+.dash-stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dash-stat-icon {
+  font-size: 1.6rem;
+  color: var(--brand);
+  opacity: 0.85;
+}
+
+.dash-stat-num {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.dash-stat-total {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.dash-stat-label {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.dash-stat-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8rem;
+}
+
+.dash-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dash-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dash-bar-name {
+  width: 120px;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+.dash-bar-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.dash-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #2b7cd3 0%, var(--brand) 100%);
+  transition: width 0.4s ease;
+}
+
+.dash-bar-count {
+  width: 32px;
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.dash-nodes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dash-node-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 4px;
+  border-radius: 8px;
+}
+
+.dash-node-clickable {
+  cursor: pointer;
+}
+
+.dash-node-clickable:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dash-node-count {
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.dash-change-item {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: -4px -8px;
+}
+
+.dash-change-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}

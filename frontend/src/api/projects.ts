@@ -67,6 +67,27 @@ export function createEnv(projectId: number, payload: { name: string; remark: st
   return apiPost<EnvNode>(`/api/v1/projects/${projectId}/envs`, payload)
 }
 
+export type CloneTargetInput = {
+  source_binding_id: number
+  instance_id: number
+  db_name: string
+  overwrite: boolean
+  create_if_missing: boolean
+}
+
+export type CloneEnvResult = {
+  env: EnvNode
+  cloned: number
+  ddl?: { dropped: string[]; created: string[] }
+}
+
+export function cloneEnv(
+  sourceEnvId: number,
+  payload: { name: string; remark?: string; comment?: string; targets?: CloneTargetInput[] },
+) {
+  return apiPost<CloneEnvResult>(`/api/v1/envs/${sourceEnvId}/clone`, payload)
+}
+
 export function updateEnv(id: number, payload: { name: string; remark: string }) {
   return apiPut<EnvNode>(`/api/v1/envs/${id}`, payload)
 }

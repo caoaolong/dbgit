@@ -5,9 +5,9 @@ import type { EnvDB, EnvNode } from '../api/projects'
 
 type Props = {
   open: boolean
-  /** 克隆的目标环境（当前环境卡片） */
+  /** 克隆的目标分支（当前分支卡片） */
   targetEnv: EnvNode | null
-  /** 项目下所有环境（来源库从其他环境挑选） */
+  /** 项目下所有分支（来源库从其他分支挑选） */
   envs: EnvNode[]
   onClose: () => void
   onCloned: () => void
@@ -19,7 +19,7 @@ type FormValues = {
   comment: string
 }
 
-/** 把来源库完整克隆到当前环境的某个库上（覆盖式，不产生新库；空环境则自动创建同名库）。 */
+/** 把来源库完整克隆到当前分支的某个库上（覆盖式，不产生新库；空分支则自动创建同名库）。 */
 export function CloneModal({ open, targetEnv, envs, onClose, onCloned }: Props) {
   const [form] = Form.useForm<FormValues>()
   const [saving, setSaving] = useState(false)
@@ -27,7 +27,7 @@ export function CloneModal({ open, targetEnv, envs, onClose, onCloned }: Props) 
   useEffect(() => {
     if (open) {
       form.resetFields()
-      // 默认目标：同环境唯一库时自动选中
+      // 默认目标：同分支唯一库时自动选中
       if (targetEnv && targetEnv.dbs && targetEnv.dbs.length === 1) {
         form.setFieldValue('target_binding_id', targetEnv.dbs[0].id)
       }
@@ -73,7 +73,7 @@ export function CloneModal({ open, targetEnv, envs, onClose, onCloned }: Props) 
 
   return (
     <Modal
-      title={targetEnv ? `克隆数据库到 ${targetEnv.name}` : '克隆数据库'}
+      title={targetEnv ? `克隆数据库到分支 ${targetEnv.name}` : '克隆数据库'}
       open={open}
       onCancel={onClose}
       footer={null}
@@ -90,11 +90,11 @@ export function CloneModal({ open, targetEnv, envs, onClose, onCloned }: Props) 
           label="来源库"
           name="source_binding_id"
           rules={[{ required: true, message: '请选择要克隆的来源库' }]}
-          tooltip="从其他环境挑选一个库，完整克隆到当前环境"
+          tooltip="从其他分支挑选一个库，完整克隆到当前分支"
         >
           <Select
             showSearch
-            placeholder="选择来源环境的库"
+            placeholder="选择来源分支的库"
             options={sourceOptions}
             optionFilterProp="label"
           />
@@ -106,15 +106,15 @@ export function CloneModal({ open, targetEnv, envs, onClose, onCloned }: Props) 
             rules={[{ required: true, message: '请选择要覆盖的目标库' }]}
             tooltip="克隆将覆盖该库以建立共同基线，不会新增库"
           >
-            <Select placeholder="选择当前环境中要被覆盖的库" options={targetOptions} />
+            <Select placeholder="选择当前分支中要被覆盖的库" options={targetOptions} />
           </Form.Item>
         ) : (
           <Form.Item label="覆盖目标">
-            <span style={{ color: '#8b9aab' }}>当前环境暂无库，将自动创建同名库</span>
+            <span style={{ color: '#8b9aab' }}>当前分支暂无库，将自动创建同名库</span>
           </Form.Item>
         )}
         <Form.Item label="说明" name="comment">
-          <Input.TextArea rows={2} placeholder="选填，如：以开发环境为基线" maxLength={256} showCount />
+          <Input.TextArea rows={2} placeholder="选填，如：以开发分支为基线" maxLength={256} showCount />
         </Form.Item>
         <div className="form-footer">
           <Button onClick={onClose}>取消</Button>

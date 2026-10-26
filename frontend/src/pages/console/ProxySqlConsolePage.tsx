@@ -21,7 +21,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { NodeModal } from '../../components/NodeModal'
-import { InstallModal } from '../../pages/InstallModal'
+import { ProxyAddModal } from '../../components/ProxyAddModal'
 import {
   deleteProxyNode,
   fetchProxyBackends,
@@ -51,7 +51,7 @@ export function ProxySqlConsolePage() {
   const [loading, setLoading] = useState(true)
   const [nodeModalOpen, setNodeModalOpen] = useState(false)
   const [editing, setEditing] = useState<ProxyNode | null>(null)
-  const [installOpen, setInstallOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -79,8 +79,7 @@ export function ProxySqlConsolePage() {
   }, [load])
 
   function openCreate() {
-    setEditing(null)
-    setNodeModalOpen(true)
+    setAddOpen(true)
   }
 
   function openEdit(e: React.MouseEvent, n: ProxyNode) {
@@ -119,14 +118,9 @@ export function ProxySqlConsolePage() {
       size="small"
       title="代理管理"
       extra={
-        <Space>
-          <Button icon={<PlusOutlined />} onClick={() => setInstallOpen(true)}>
-            安装本地代理
-          </Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-            添加远程代理
-          </Button>
-        </Space>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          添加代理
+        </Button>
       }
     >
       {loading ? (
@@ -135,8 +129,8 @@ export function ProxySqlConsolePage() {
         </div>
       ) : items.length === 0 ? (
         <Empty description="暂无代理实例，可安装本地代理或添加远程代理">
-          <Button type="primary" onClick={() => setInstallOpen(true)}>
-            安装本地代理
+          <Button type="primary" onClick={openCreate}>
+            添加代理
           </Button>
         </Empty>
       ) : (
@@ -232,13 +226,11 @@ export function ProxySqlConsolePage() {
         onClose={() => setNodeModalOpen(false)}
         onSaved={load}
       />
-      {installOpen && (
-        <InstallModal
-          open={installOpen}
-          onClose={() => setInstallOpen(false)}
-          onInstalled={load}
-        />
-      )}
+      <ProxyAddModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onChanged={load}
+      />
     </Card>
   )
 }

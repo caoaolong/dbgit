@@ -75,7 +75,7 @@ function stmtColor(t: string): string {
 
 type Props = {
   binding: EnvDB
-  /** 同项目下的环境列表（含各环境绑定库，供合并/克隆选择） */
+  /** 同项目下的分支列表（含各分支绑定库，供合并/克隆选择） */
   envs: EnvNode[]
   onMerged: () => void
 }
@@ -177,7 +177,7 @@ export function DbChangeLog({ binding, envs, onMerged }: Props) {
   }
 
   const targetEnvs = envs.filter((e) => e.id !== binding.env_id)
-  // 当前库所在环境：克隆的目标环境（把其他分支的库克隆到本环境建基线）
+  // 当前库所在分支：克隆的目标分支（把其他分支的库克隆到本分支建基线）
   const currentEnv = envs.find((e) => e.id === binding.env_id) ?? null
 
   return (
@@ -221,7 +221,7 @@ export function DbChangeLog({ binding, envs, onMerged }: Props) {
               type="link"
               size="small"
               icon={<CopyOutlined />}
-              title="从其他分支克隆库到当前环境，建立共同基线"
+              title="从其他分支克隆库到当前分支，建立共同基线"
               onClick={() => setCloneOpen(true)}
             >
               克隆
@@ -372,16 +372,16 @@ export function DbChangeLog({ binding, envs, onMerged }: Props) {
             name="comment"
             rules={[{ required: true, message: '请输入本次合并的说明' }]}
           >
-            <Input.TextArea rows={3} placeholder="如：开发库表结构同步到测试环境" maxLength={256} showCount />
+            <Input.TextArea rows={3} placeholder="如：开发库表结构同步到测试分支" maxLength={256} showCount />
           </Form.Item>
           <Form.Item
             label="目标分支"
             name="target_env_id"
-            rules={[{ required: true, message: '请选择要合并到的环境' }]}
-            tooltip="将以该环境作为合并目标分支记入分支树"
+            rules={[{ required: true, message: '请选择要合并到的分支' }]}
+            tooltip="将以该分支作为合并目标分支记入分支树"
           >
             <Select
-              placeholder="选择环境"
+              placeholder="选择分支"
               options={targetEnvs.map((e) => ({ value: e.id, label: e.name }))}
             />
           </Form.Item>

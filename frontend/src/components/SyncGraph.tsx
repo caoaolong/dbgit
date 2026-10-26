@@ -27,7 +27,7 @@ const LABEL_FONT = `normal 12px ${APP_FONT}`
 const LABEL_PAD_X = 10
 const LABEL_PAD_Y = 5
 
-// 同步配置专属分支（独立 id，避免与环境 id 冲突）
+// 同步配置专属分支（独立 id，避免与其他分支 id 冲突）
 const CONFIG_BRANCH_ID = -1
 const CONFIG_BRANCH_COLOR = '#8b9aab'
 
@@ -471,7 +471,7 @@ export function SyncGraph({ projectId, projectName }: Props) {
                 branches.set(envId, b)
                 return b
               }
-              // 所有环境分支预先建好：克隆不再分叉新分支，只在现有分支上落标记
+              // 所有分支预先建好：克隆不再分叉新分支，只在现有分支上落标记
               for (const e of data?.envs ?? []) {
                 if (!branches.has(e.id)) makeBranch(e.id, e.name)
               }

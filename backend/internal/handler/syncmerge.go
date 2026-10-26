@@ -28,7 +28,7 @@ type mergeForm struct {
 }
 
 // CreateMerge POST /api/v1/bindings/:id/merges
-// 把某绑定库的变更合并到目标环境（仅记录合并意图与快照，实际数据同步后续实现）。
+// 把某绑定库的变更合并到目标分支（仅记录合并意图与快照，实际数据同步后续实现）。
 func (h *SyncMerges) CreateMerge(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -41,7 +41,7 @@ func (h *SyncMerges) CreateMerge(c *gin.Context) {
 	}
 	f.Comment = strings.TrimSpace(f.Comment)
 	if f.TargetEnvID <= 0 {
-		response.Abort(c, http.StatusBadRequest, 400, "请选择要合并到的环境")
+		response.Abort(c, http.StatusBadRequest, 400, "请选择要合并到的分支")
 		return
 	}
 	if f.Comment == "" {
@@ -69,21 +69,21 @@ func (h *SyncMerges) CreateMerge(c *gin.Context) {
 	tgtEnv, err := h.db.GetEnv(f.TargetEnvID)
 	if err != nil {
 		if isNotFound(err) {
-			response.Abort(c, http.StatusNotFound, 404, "目标环境不存在")
+			response.Abort(c, http.StatusNotFound, 404, "目标分支不存在")
 			return
 		}
 		response.Abort(c, http.StatusInternalServerError, 500, "查询失败: "+err.Error())
 		return
 	}
 	if tgtEnv.ProjectID != srcEnv.ProjectID {
-		response.Abort(c, http.StatusBadRequest, 400, "只能合并到同一项目下的环境")
+		response.Abort(c, http.StatusBadRequest, 400, "只能合并到同一项目下的分支")
 		return
 	}
 	if tgtEnv.ID == srcEnv.ID {
-		response.Abort(c, http.StatusBadRequest, 400, "目标环境不能与来源环境相同")
+		response.Abort(c, http.StatusBadRequest, 400, "目标分支不能与来源分支相同")
 		return
 	}
-	// 在目标环境中按同名库解析合并目标绑定（没有则记 0）。
+	// 在目标分支中按同名库解析合并目标绑定（没有则记 0）。
 	var targetBindingID int64
 	var targetDBName string
 	if dbs, err := h.db.ListEnvDBs(tgtEnv.ID); err == nil {
@@ -168,7 +168,7 @@ type cloneForm struct {
 }
 
 // CreateClone POST /api/v1/bindings/:id/clone
-// 把来源库完整克隆到目标环境的某个库上（覆盖式，不产生新库；目标环境为空时才自动创建同名库）：
+// 把来源库完整克隆到目标分支的某个库上（覆盖式，不产生新库；目标分支为空时才自动创建同名库）：
 // 记录克隆血缘并在目标库上生成一条 CLONE 提交，为后续合并建立共同基线。
 // 注：当前仅记录血缘与标记，实际数据搬运由后续同步执行完成。
 func (h *SyncMerges) CreateClone(c *gin.Context) {
@@ -183,7 +183,7 @@ func (h *SyncMerges) CreateClone(c *gin.Context) {
 	}
 	f.Comment = strings.TrimSpace(f.Comment)
 	if f.TargetEnvID <= 0 {
-		response.Abort(c, http.StatusBadRequest, 400, "请选择要克隆到的环境")
+		response.Abort(c, http.StatusBadRequest, 400, "请选择要克隆到的分支")
 		return
 	}
 	if len(f.Comment) > 256 {
@@ -207,18 +207,18 @@ func (h *SyncMerges) CreateClone(c *gin.Context) {
 	tgtEnv, err := h.db.GetEnv(f.TargetEnvID)
 	if err != nil {
 		if isNotFound(err) {
-			response.Abort(c, http.StatusNotFound, 404, "目标环境不存在")
+			response.Abort(c, http.StatusNotFound, 404, "目标分支不存在")
 			return
 		}
 		response.Abort(c, http.StatusInternalServerError, 500, "查询失败: "+err.Error())
 		return
 	}
 	if tgtEnv.ProjectID != srcEnv.ProjectID {
-		response.Abort(c, http.StatusBadRequest, 400, "只能克隆到同一项目下的环境")
+		response.Abort(c, http.StatusBadRequest, 400, "只能克隆到同一项目下的分支")
 		return
 	}
 	if tgtEnv.ID == srcEnv.ID {
-		response.Abort(c, http.StatusBadRequest, 400, "目标环境不能与来源环境相同")
+		response.Abort(c, http.StatusBadRequest, 400, "目标分支不能与来源分支相同")
 		return
 	}
 	tgtDBs, err := h.db.ListEnvDBs(tgtEnv.ID)
@@ -226,7 +226,7 @@ func (h *SyncMerges) CreateClone(c *gin.Context) {
 		response.Abort(c, http.StatusInternalServerError, 500, "查询失败: "+err.Error())
 		return
 	}
-	// 解析目标库：显式指定 > 同名库 > 唯一库；空环境则自动创建同名库。
+	// 解析目标库：显式指定 > 同名库 > 唯一库；空分支则自动创建同名库。
 	var target *store.EnvDB
 	created := false
 	if f.TargetBindingID > 0 {
@@ -237,7 +237,7 @@ func (h *SyncMerges) CreateClone(c *gin.Context) {
 			}
 		}
 		if target == nil {
-			response.Abort(c, http.StatusBadRequest, 400, "目标库不属于目标环境")
+			response.Abort(c, http.StatusBadRequest, 400, "目标库不属于目标分支")
 			return
 		}
 		if target.ID == src.ID {
@@ -262,7 +262,7 @@ func (h *SyncMerges) CreateClone(c *gin.Context) {
 			t, err := h.db.CreateEnvDB(tgtEnv.ID, src.InstanceID, src.DBName, remark)
 			if err != nil {
 				if store.IsUniqueViolation(err) {
-					response.Abort(c, http.StatusBadRequest, 400, "目标环境已存在同名库")
+					response.Abort(c, http.StatusBadRequest, 400, "目标分支已存在同名库")
 					return
 				}
 				response.Abort(c, http.StatusInternalServerError, 500, "创建目标绑定失败: "+err.Error())
@@ -333,7 +333,7 @@ type GraphStmt struct {
 	EventTime string `json:"event_time"`
 }
 
-// GraphEnv 分支树上的分支（一个环境）。
+// GraphEnv 分支树上的分支（一个分支）。
 type GraphEnv struct {
 	ID   int64     `json:"id"`
 	Name string    `json:"name"`

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// SyncClone 一次克隆记录：把某绑定库拷贝到目标环境，为后续合并建立共同基线。
+// SyncClone 一次克隆记录：把某绑定库拷贝到目标分支，为后续合并建立共同基线。
 // 当前仅记录血缘与绑定关系（元数据层面），实际数据搬运由后续同步执行。
 type SyncClone struct {
 	ID              int64  `json:"id"`

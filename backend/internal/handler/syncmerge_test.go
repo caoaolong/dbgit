@@ -25,6 +25,8 @@ func setupMergeTest(t *testing.T) (*store.DB, *SyncMerges, *gin.Engine) {
 	r.POST("/api/v1/bindings/:id/merges", h.CreateMerge)
 	r.POST("/api/v1/bindings/:id/clone", h.CreateClone)
 	r.GET("/api/v1/projects/:id/sync-graph", h.SyncGraph)
+	ph := NewProjects(db)
+	r.POST("/api/v1/envs/:id/clone", ph.CloneEnv)
 	sc := NewSyncConfig(db)
 	r.GET("/api/v1/projects/:id/sync-config", sc.GetSyncConfig)
 	r.PUT("/api/v1/projects/:id/sync-config", sc.UpdateSyncConfig)
@@ -352,5 +354,126 @@ func TestSyncConfigRevision(t *testing.T) {
 	}
 	if cc[0].(map[string]any)["rule_count"] != float64(2) {
 		t.Fatalf("第一版应有 2 条规则: %v", cc[0])
+	}
+}
+
+// TestCloneEnv 整分支克隆：新建分支时从来源分支完整复制全部绑定与基准标记。
+func TestCloneEnv(t *testing.T) {
+	db, _, r := setupMergeTest(t)
+	_, devID, _, _ := seedMergeProject(t, db)
+
+	// 正常克隆：开发 → 预发布。
+	code, out := doRequest(t, r, "POST",
+		"/api/v1/envs/"+itoa(devID)+"/clone",
+		map[string]any{"name": "预发布", "remark": "克隆测试", "comment": "建基线"})
+	if code != http.StatusOK || out["code"] != float64(0) {
+		t.Fatalf("克隆失败: http=%d body=%v", code, out)
+	}
+	data := out["data"].(map[string]any)
+	env, ok := data["env"].(map[string]any)
+	if !ok || env["name"] != "预发布" {
+		t.Fatalf("应返回新分支: %v", data)
+	}
+	dbs, ok := env["dbs"].([]any)
+	if !ok || len(dbs) != 1 {
+		t.Fatalf("新分支应完整复制来源的 1 个绑定: %v", env)
+	}
+	if dbs[0].(map[string]any)["db_name"] != "shop_dev" {
+		t.Fatalf("复制的绑定库名不对: %v", dbs[0])
+	}
+
+	// 每个新库都应有一条 CLONE 基准标记。
+	for _, b := range dbs {
+		bid := int64(b.(map[string]any)["id"].(float64))
+		changes, err := db.ListSQLChanges(bid, store.SQLChangeFilter{StmtType: "CLONE"})
+		if err != nil || len(changes) != 1 {
+			t.Fatalf("新绑定 %d 应有 1 条 CLONE 提交: %+v, %v", bid, changes, err)
+		}
+		if changes[0].StmtType != "CLONE" {
+			t.Fatalf("应为 CLONE 类型: %+v", changes[0])
+		}
+	}
+
+	// 重名分支应被拒绝。
+	_, out = doRequest(t, r, "POST",
+		"/api/v1/envs/"+itoa(devID)+"/clone",
+		map[string]any{"name": "预发布"})
+	if out["code"] == float64(0) {
+		t.Fatalf("重名分支应被拒绝")
+	}
+
+	// 不存在的来源分支应 404。
+	code, out = doRequest(t, r, "POST", "/api/v1/envs/999999/clone",
+		map[string]any{"name": "x"})
+	if code != http.StatusNotFound || out["code"] == float64(0) {
+		t.Fatalf("不存在的来源应 404: http=%d body=%v", code, out)
+	}
+}
+
+// TestCloneEnvTargets 整分支克隆的逐库目标校验（均在真实 DDL 前拦截，无需活 MySQL）。
+func TestCloneEnvTargets(t *testing.T) {
+	db, _, r := setupMergeTest(t)
+	_, devID, _, devBindingID := seedMergeProject(t, db)
+	insID := int64(1) // seed 首个实例
+
+	target := func(srcID, ins int64, name string) map[string]any {
+		return map[string]any{
+			"source_binding_id": srcID, "instance_id": ins,
+			"db_name": name, "overwrite": true, "create_if_missing": true,
+		}
+	}
+	// 来源库不属于该分支。
+	code, out := doRequest(t, r, "POST", "/api/v1/envs/"+itoa(devID)+"/clone",
+		map[string]any{"name": "x1", "targets": []any{target(999999, insID, "a")}})
+	if code != http.StatusBadRequest {
+		t.Fatalf("未知来源库应 400: http=%d body=%v", code, out)
+	}
+	// 非法目标库名。
+	code, out = doRequest(t, r, "POST", "/api/v1/envs/"+itoa(devID)+"/clone",
+		map[string]any{"name": "x1", "targets": []any{target(devBindingID, insID, "bad name!")}})
+	if code != http.StatusBadRequest {
+		t.Fatalf("非法库名应 400: http=%d body=%v", code, out)
+	}
+	// 目标连接不存在。
+	code, out = doRequest(t, r, "POST", "/api/v1/envs/"+itoa(devID)+"/clone",
+		map[string]any{"name": "x1", "targets": []any{target(devBindingID, 999999, "a")}})
+	if code != http.StatusNotFound {
+		t.Fatalf("未知连接应 404: http=%d body=%v", code, out)
+	}
+	// 给开发分支再加一个库，覆盖“部分覆盖”与“目标重复”校验。
+	b2, err := db.CreateEnvDB(devID, insID, "shop_dev2", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, out = doRequest(t, r, "POST", "/api/v1/envs/"+itoa(devID)+"/clone",
+		map[string]any{"name": "x1", "targets": []any{target(devBindingID, insID, "a")}})
+	if code != http.StatusBadRequest {
+		t.Fatalf("部分覆盖应 400: http=%d body=%v", code, out)
+	}
+	code, out = doRequest(t, r, "POST", "/api/v1/envs/"+itoa(devID)+"/clone",
+		map[string]any{"name": "x1", "targets": []any{
+			target(devBindingID, insID, "same"), target(b2.ID, insID, "same"),
+		}})
+	if code != http.StatusBadRequest {
+		t.Fatalf("重复目标应 400: http=%d body=%v", code, out)
+	}
+	// 真实 DDL 连不上目标实例时应 500，且不落任何元数据（无新分支）。
+	code, out = doRequest(t, r, "POST", "/api/v1/envs/"+itoa(devID)+"/clone",
+		map[string]any{"name": "x1", "targets": []any{
+			target(devBindingID, insID, "a"), target(b2.ID, insID, "b"),
+		}})
+	if code != http.StatusInternalServerError {
+		t.Fatalf("DDL 失败应 500: http=%d body=%v", code, out)
+	}
+	tree, err := db.GetProjectTree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range tree {
+		for _, e := range p.Envs {
+			if e.Name == "x1" {
+				t.Fatalf("DDL 失败后不应创建新分支")
+			}
+		}
 	}
 }

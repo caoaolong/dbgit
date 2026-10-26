@@ -10,6 +10,7 @@ import { ProjectDetailPage } from './pages/console/ProjectDetailPage'
 import { OverviewPage } from './pages/console/OverviewPage'
 import { ProxySqlConsolePage } from './pages/console/ProxySqlConsolePage'
 import { ProxyNodePage } from './pages/console/ProxyNodePage'
+import { QuickStartPage } from './pages/console/QuickStartPage'
 import { SettingsPage } from './pages/console/SettingsPage'
 import './App.css'
 
@@ -47,6 +48,7 @@ function App() {
             <Route path="proxysql/:id" element={<ProxyNodePage />} />
             <Route path="instances" element={<InstancesPage />} />
             <Route path="projects" element={<ProjectsPage />} />
+            <Route path="quickstart" element={<QuickStartPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
           {/* 项目二级页面：独立应用视图，只挂载项目自己的侧边栏布局，不嵌套全局控制台布局 */}

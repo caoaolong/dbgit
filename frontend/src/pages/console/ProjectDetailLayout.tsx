@@ -22,7 +22,7 @@ import { DbTypeIcon } from '../../components/DbTypeIcon'
 
 const { Content, Header, Sider } = Layout
 
-/** 项目详情专属布局：侧边栏为环境→数据库目录树，点击数据库切换右侧 SQL 日志视图 */
+/** 项目详情专属布局：侧边栏为分支→数据库目录树，点击数据库切换右侧 SQL 日志视图 */
 export function ProjectDetailLayout() {
   const { id } = useParams<{ id: string }>()
   const projectId = Number(id)
@@ -57,7 +57,7 @@ export function ProjectDetailLayout() {
     }
   }, [projectId])
 
-  // 项目加载后默认展开全部环境。
+  // 项目加载后默认展开全部分支。
   useEffect(() => {
     setOpenKeys((project?.envs ?? []).map((e) => `env-${e.id}`))
   }, [project])
@@ -194,10 +194,10 @@ export function ProjectDetailLayout() {
                     ? `${project.name} · 同步配置`
                     : currentView === 'changes'
                       ? `${project.name} · 变更记录`
-                      : `${project.name} · 环境管理`
+                      : `${project.name} · 分支管理`
                 : '项目详情'}
             </span>
-            {project ? <Tag color="green">{project.envs.length} 个环境</Tag> : null}
+            {project ? <Tag color="green">{project.envs.length} 个分支</Tag> : null}
           </Space>
         </Header>
         <Content className="console-content">
